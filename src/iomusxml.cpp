@@ -927,7 +927,7 @@ bool MusicXmlInput::ReadMusicXml(pugi::xml_node root)
             rend->SetValign(
                 rend->AttVerticalAlign::StrToVerticalalignment(words.node().attribute("valign").as_string()));
             rend->SetFontstyle(rend->AttTypography::StrToFontstyle(words.node().attribute("font-style").as_string()));
-            // rend->SetFontsize(rend->AttTypography::StrToFontsize(words.node().attribute("font-size").as_string()+std::string("pt")));
+            rend->SetFontsize(rend->AttTypography::StrToFontsize(words.node().attribute("font-size").as_string()+std::string("pt")));
             rend->SetFontweight(
                 rend->AttTypography::StrToFontweight(words.node().attribute("font-weight").as_string()));
             rend->AddChild(text);
