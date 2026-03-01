@@ -1093,7 +1093,7 @@ Options::Options()
     this->Register(&m_outputSmuflXmlEntities, "outputSmuflXmlEntities", &m_general);
 
     m_pageHeight.SetInfo("Page height", "The page height");
-    m_pageHeight.Init(2970, 100, 60000, true);
+    m_pageHeight.Init(2970, 100, 1000000, true);
     this->Register(&m_pageHeight, "pageHeight", &m_general);
 
     m_pageMarginBottom.SetInfo("Page bottom margin", "The page bottom margin");
