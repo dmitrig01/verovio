@@ -51,6 +51,16 @@ BeamSpan::~BeamSpan()
     this->ClearBeamSegments();
 }
 
+void BeamSpan::CloneReset()
+{
+    // These segments are owned by the BeamSpan we cloned from; clear without
+    // deleting to avoid a double-free when the parent CloneReset invokes
+    // ResetDataFunctor::VisitBeamSpan → ClearBeamSegments on this clone.
+    m_beamSegments.clear();
+
+    ControlElement::CloneReset();
+}
+
 void BeamSpan::Reset()
 {
     ControlElement::Reset();

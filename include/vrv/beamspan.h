@@ -43,6 +43,7 @@ public:
     BeamSpan();
     virtual ~BeamSpan();
     Object *Clone() const override { return new BeamSpan(*this); }
+    void CloneReset() override;
     void Reset() override;
     std::string GetClassName() const override { return "beamSpan"; }
     ///@}
