@@ -2384,8 +2384,15 @@ void MusicXmlInput::ReadMusicXmlDirection(
             }
 
             this->TextRendition(words, dir);
-            defaultY = (defaultY < 0) ? std::abs(defaultY) : defaultY + 2000;
-            dir->SetVgrp(defaultY);
+            // Only group directions that have explicit positioning in the source.
+            // Directions without default-y/relative-y all map to vgrp=2000, causing
+            // AdjustFloatingPositionerGrpsFunctor to equalize unrelated directions
+            // to the same Y and produce overlaps.
+            if (!words.first().node().attribute("default-y").empty()
+                || !words.first().node().attribute("relative-y").empty()) {
+                defaultY = (defaultY < 0) ? std::abs(defaultY) : defaultY + 2000;
+                dir->SetVgrp(defaultY);
+            }
             m_controlElements.push_back({ measureNum, dir });
             m_dirStack.push_back(dir);
 
