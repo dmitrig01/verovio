@@ -451,6 +451,14 @@ typedef std::map<int, LayerN_VerserN_t> StaffN_LayerN_VerseN_t;
 
 #define DEFAULT_UNIT 9.0
 
+// Internal drawing units (i.e., already DEFINITION_FACTOR-scaled) per real-world typographic point
+// (1/72 inch). Internal drawing units are always calibrated to 1/100 mm (page geometry options such as
+// Doc::m_pageWidth are expressed in tenths of a millimeter before DEFINITION_FACTOR scaling, i.e.
+// DEFINITION_FACTOR * 10 internal units per mm), so 1pt = (25.4 / 72) mm converts to this many internal
+// units. Used to convert an absolute MEI/MusicXML @fontsize point value (data.FONTSIZENUMERIC) into the
+// same internal unit space as FontInfo point sizes computed elsewhere (e.g. Doc::m_drawingLyricFontSize).
+#define POINT_TO_INTERNAL_UNIT (DEFINITION_FACTOR * 10.0 * 25.4 / 72.0)
+
 #define isIn(x, a, b) (((x) >= std::min((a), (b))) && ((x) <= std::max((a), (b))))
 
 /**

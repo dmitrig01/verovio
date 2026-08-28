@@ -10,6 +10,7 @@
 //----------------------------------------------------------------------------
 
 #include <cassert>
+#include <cmath>
 #include <iostream>
 #include <math.h>
 #include <sstream>
@@ -391,7 +392,11 @@ void View::DrawRend(DeviceContext *dc, Rend *rend, TextDrawingParams &params)
     if (rend->HasFontsize()) {
         data_FONTSIZE *fs = rend->GetFontsizeAlternate();
         if (fs->GetType() == FONTSIZE_fontSizeNumeric) {
-            rendFont.SetPointSize(fs->GetFontSizeNumeric());
+            // fs->GetFontSizeNumeric() is an absolute point value (data.FONTSIZENUMERIC); convert it into
+            // the same internal drawing-unit space that FontInfo point sizes use everywhere else (e.g. the
+            // default params.m_pointSize computed from Doc::m_drawingLyricFontSize), otherwise a literal
+            // point value renders at a completely different (much smaller) scale than the rest of the text.
+            rendFont.SetPointSize(std::lround(fs->GetFontSizeNumeric() * POINT_TO_INTERNAL_UNIT));
         }
         else if (fs->GetType() == FONTSIZE_term) {
             const int percent = fs->GetPercentForTerm();
