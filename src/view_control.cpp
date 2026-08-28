@@ -1873,7 +1873,19 @@ void View::DrawDirAsSystemLabel(DeviceContext *dc, Dir *dir, Measure *measure, S
     const int doubleUnit = m_doc->GetDrawingDoubleUnit(staffSize);
     const int space = doubleUnit;
     const int x = measure->GetDrawingX() - space;
-    const int y = staff->GetDrawingY() - (staff->m_drawingLines * doubleUnit / 2);
+    int y = staff->GetDrawingY() - (staff->m_drawingLines * doubleUnit / 2);
+
+    // The formula above (same as View::DrawStaffDefLabels) computes a Y that is meant as a visual
+    // center of the staff, not a text baseline. Drawing the text baseline directly at that Y leaves
+    // the glyph body - which extends upward from its baseline - sitting visibly above the true center.
+    // Apply the same baseline-to-visual-center correction used by View::DrawControlElementText when it
+    // centers Dir/Dynam text at a computed Y (STAFFREL_between/within): account for extra lines, then
+    // shift down by half the font's x-height so the glyphs themselves end up centered on the target Y.
+    const int lineCount = dir->GetTextDirInterface()->GetNumberOfLines(dir);
+    if (lineCount > 1) {
+        y += (m_doc->GetTextLineHeight(&dirTxt, false) * (lineCount - 1) / 2);
+    }
+    y -= m_doc->GetTextXHeight(&dirTxt, false) / 2;
 
     TextDrawingParams params;
     params.m_x = x;
