@@ -1791,6 +1791,17 @@ void MEIOutput::WriteSb(pugi::xml_node currentNode, Sb *sb)
     this->WriteSystemElement(currentNode, sb);
     this->WriteFacsimileInterface(currentNode, sb);
     sb->WriteNNumberLike(currentNode);
+
+    // See MEIInput::ReadSb for why these are written here (round-tripping the system margins
+    // set from a MusicXML print/system-layout/system-margins element through score-based MEI).
+    if (sb->m_systemLeftMar != VRV_UNSET) {
+        currentNode.append_attribute("system.leftmar")
+            = StringFormat("%d", sb->m_systemLeftMar / DEFINITION_FACTOR).c_str();
+    }
+    if (sb->m_systemRightMar != VRV_UNSET) {
+        currentNode.append_attribute("system.rightmar")
+            = StringFormat("%d", sb->m_systemRightMar / DEFINITION_FACTOR).c_str();
+    }
 }
 
 void MEIOutput::WriteScoreDefElement(pugi::xml_node currentNode, ScoreDefElement *scoreDefElement)
@@ -4837,6 +4848,18 @@ bool MEIInput::ReadSb(Object *parent, pugi::xml_node sb)
     this->ReadFacsimileInterface(sb, vrvSb);
 
     vrvSb->ReadNNumberLike(sb);
+
+    // System left and right margins to be transferred to the System created from this Sb during cast
+    // off (see CastOffEncodingFunctor::VisitSb). Written out in WriteSb so that they survive a
+    // score-based MEI round trip (e.g., Toolkit::GetMEI() with the default scoreBased option).
+    if (sb.attribute("system.leftmar")) {
+        vrvSb->m_systemLeftMar = sb.attribute("system.leftmar").as_int() * DEFINITION_FACTOR;
+        sb.remove_attribute("system.leftmar");
+    }
+    if (sb.attribute("system.rightmar")) {
+        vrvSb->m_systemRightMar = sb.attribute("system.rightmar").as_int() * DEFINITION_FACTOR;
+        sb.remove_attribute("system.rightmar");
+    }
 
     parent->AddChild(vrvSb);
     this->ReadUnsupportedAttr(sb, vrvSb);
