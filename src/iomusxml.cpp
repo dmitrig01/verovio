@@ -2754,6 +2754,7 @@ void MusicXmlInput::ReadMusicXmlDirection(
     // Tempo
     if (containsTempo) {
         Tempo *tempo = new Tempo();
+        pugi::xpath_node metronome = node.select_node("direction-type/metronome[not(@print-object='no')]");
         if (!words.empty()) {
             const std::string lang = words.first().node().attribute("xml:lang")
                 ? words.first().node().attribute("xml:lang").as_string()
@@ -2770,9 +2771,16 @@ void MusicXmlInput::ReadMusicXmlDirection(
                 tempo->m_drawingYOffset = std::lround(tenths * DEFINITION_FACTOR / 5.0);
             }
         }
+        else if (metronome
+            && (metronome.node().attribute("default-y") || metronome.node().attribute("relative-y"))) {
+            // Bare metronome-only tempo direction (no <words> sibling at all): read the same vertical
+            // offset from the <metronome> element itself, since there is no tempo word to carry it.
+            const double tenths = metronome.node().attribute("default-y").as_double()
+                + metronome.node().attribute("relative-y").as_double();
+            tempo->m_drawingYOffset = std::lround(tenths * DEFINITION_FACTOR / 5.0);
+        }
         tempo->SetPlace(tempo->AttPlacementRelStaff::StrToStaffrel(placeStr.c_str()));
         if (words.size() != 0) TextRendition(words, tempo);
-        pugi::xpath_node metronome = node.select_node("direction-type/metronome[not(@print-object='no')]");
         if (metronome) PrintMetronome(metronome.node(), tempo);
         if (soundNode.attribute("tempo")) {
             tempo->SetMidiBpm(soundNode.attribute("tempo").as_double());
