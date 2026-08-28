@@ -1802,6 +1802,12 @@ void MEIOutput::WriteSb(pugi::xml_node currentNode, Sb *sb)
         currentNode.append_attribute("system.rightmar")
             = StringFormat("%d", sb->m_systemRightMar / DEFINITION_FACTOR).c_str();
     }
+    // Non-standard flag requesting that the system started by this <sb> never be stretched by horizontal
+    // justification (see MusicXmlInput::ReadMusicXmlPrint and CastOffEncodingFunctor::VisitSb). Written out
+    // here for the same score-based MEI round-trip reason as the system margins above.
+    if (sb->m_noJustify) {
+        currentNode.append_attribute("vrv.nojustify") = "true";
+    }
 }
 
 void MEIOutput::WriteScoreDefElement(pugi::xml_node currentNode, ScoreDefElement *scoreDefElement)
@@ -4865,6 +4871,11 @@ bool MEIInput::ReadSb(Object *parent, pugi::xml_node sb)
     if (sb.attribute("system.rightmar")) {
         vrvSb->m_systemRightMar = sb.attribute("system.rightmar").as_int() * DEFINITION_FACTOR;
         sb.remove_attribute("system.rightmar");
+    }
+    // Non-standard "do not justify this system" flag; see WriteSb.
+    if (sb.attribute("vrv.nojustify")) {
+        vrvSb->m_noJustify = sb.attribute("vrv.nojustify").as_bool();
+        sb.remove_attribute("vrv.nojustify");
     }
 
     parent->AddChild(vrvSb);

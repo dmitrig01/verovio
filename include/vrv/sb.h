@@ -72,6 +72,15 @@ public:
     int m_systemLeftMar = VRV_UNSET;
     int m_systemRightMar = VRV_UNSET;
     ///@}
+
+    /**
+     * Flag indicating that the system started by this <sb> should never be stretched by horizontal
+     * justification (i.e., it is rendered at its natural content width). Carried over from import (see
+     * MusicXmlInput::ReadMusicXmlPrint) so that it can be transferred to the System object created from
+     * this Sb during cast off (see CastOffEncodingFunctor::VisitSb).
+     */
+    bool m_noJustify = false;
+
 private:
     //
 };

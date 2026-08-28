@@ -4025,6 +4025,12 @@ void MusicXmlInput::ReadMusicXmlPrint(pugi::xml_node node, Section *section)
                     systemMargins.child("right-margin").text().as_double() * DEFINITION_FACTOR / 5.0);
             }
         }
+        // Non-standard, invented attribute (MusicXML has no element/attribute for this): a downstream
+        // pipeline can request that this system never be stretched by horizontal justification (rendered
+        // at its natural content width) by setting <print new-system="yes" non-justified="true">.
+        if (node.attribute("non-justified").as_bool()) {
+            sb->m_noJustify = true;
+        }
         section->AddChild(sb);
     }
 

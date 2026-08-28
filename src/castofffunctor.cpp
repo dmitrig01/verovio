@@ -504,6 +504,7 @@ FunctorCode CastOffEncodingFunctor::VisitSb(Sb *sb)
     // MusicXmlInput::ReadMusicXmlPrint) onto the System that this <sb> starts.
     if (sb->m_systemLeftMar != VRV_UNSET) m_currentSystem->m_systemLeftMar = sb->m_systemLeftMar;
     if (sb->m_systemRightMar != VRV_UNSET) m_currentSystem->m_systemRightMar = sb->m_systemRightMar;
+    if (sb->m_noJustify) m_currentSystem->m_noJustify = true;
     sb->MoveItselfTo(m_currentSystem);
 
     return FUNCTOR_SIBLINGS;

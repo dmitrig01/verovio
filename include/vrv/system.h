@@ -191,6 +191,12 @@ public:
     /** System right margin (MEI scoredef@system.rightmar). Saved if != 0 */
     int m_systemRightMar;
     /**
+     * Flag indicating that this system should never be stretched by horizontal justification (rendered at
+     * its natural content width instead). Carried over from the Sb that started this system during cast
+     * off (see CastOffEncodingFunctor::VisitSb) and consumed by JustifyXFunctor::VisitSystem.
+     */
+    bool m_noJustify = false;
+    /**
      * The Y absolute position of the staff for facsimile (transcription) encodings.
      * This is the top left corner of the system.
      */

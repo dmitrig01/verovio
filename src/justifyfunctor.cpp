@@ -108,6 +108,15 @@ FunctorCode JustifyXFunctor::VisitSection(Section *section)
 FunctorCode JustifyXFunctor::VisitSystem(System *system)
 {
     m_measureXRel = 0;
+
+    // A system flagged as "no justify" (see System::m_noJustify) is rendered at its natural content
+    // width: skip the ratio computation below and force a no-op ratio so that JustifyXFunctor::VisitAlignment
+    // leaves every alignment's XRel untouched.
+    if (system->m_noJustify) {
+        m_justifiableRatio = 1.0;
+        return FUNCTOR_CONTINUE;
+    }
+
     int margins = system->m_systemLeftMar + system->m_systemRightMar;
     int nonJustifiableWidth = margins
         + (system->m_drawingTotalWidth - system->m_drawingJustifiableWidth); // m_drawingTotalWidth includes the labels
