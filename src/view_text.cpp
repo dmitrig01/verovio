@@ -558,7 +558,8 @@ void View::DrawMetronomeNoteSymbol(DeviceContext *dc, Rend *rend, TextDrawingPar
     // against whatever came before it (e.g. the "(" in "Moderato (<note> = 104)"). Not applied when
     // this Rend is first in the run (no preceding sibling): there is nothing for it to look jammed
     // against, and doing so would needlessly shift the whole tempo mark off its intended anchor.
-    const int gap = m_doc->GetDrawingUnit(staffSize) / 3;
+    const int leadingGap = m_doc->GetDrawingUnit(staffSize);
+    const int trailingGapAmount = m_doc->GetDrawingUnit(staffSize) / 4;
     int trailingGap = 0;
     if (Object *parent = rend->GetParent()) {
         Object *prev = parent->GetPrevious(rend);
@@ -566,10 +567,10 @@ void View::DrawMetronomeNoteSymbol(DeviceContext *dc, Rend *rend, TextDrawingPar
             prev = parent->GetPrevious(prev);
         }
         if (prev) {
-            x = prev->GetContentRight() + gap;
-            // Keep the trailing gap before whatever follows (e.g. " = 104)") consistent with the
-            // leading one, since resumeX below is otherwise computed from the pre-nudge geometry.
-            trailingGap = gap;
+            x = prev->GetContentRight() + leadingGap;
+            // Trailing gap before whatever follows (e.g. " = 104)") is deliberately smaller than the
+            // leading one - the note should sit closer to what follows it than to what precedes it.
+            trailingGap = trailingGapAmount;
         }
         else if (rend->HasContentBB()) {
             x = rend->GetContentLeft();
