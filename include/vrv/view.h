@@ -428,6 +428,7 @@ protected:
     void DrawBreath(DeviceContext *dc, Breath *breath, Measure *measure, System *system);
     void DrawCaesura(DeviceContext *dc, Caesura *caesura, Measure *measure, System *system);
     void DrawControlElementText(DeviceContext *dc, ControlElement *element, Measure *measure, System *system);
+    void DrawDirAsSystemLabel(DeviceContext *dc, Dir *dir, Measure *measure, System *system);
     void DrawDynam(DeviceContext *dc, Dynam *dynam, Measure *measure, System *system);
     void DrawDynamSymbolOnly(DeviceContext *dc, Staff *staff, Dynam *dynam, const std::u32string &dynamSymbol,
         data_HORIZONTALALIGNMENT alignment, TextDrawingParams &params);

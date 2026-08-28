@@ -102,6 +102,18 @@ public:
      */
     int m_drawingYOffset = 0;
 
+    /**
+     * When true, this Dir is drawn as a system-left-margin label instead of a normal floating,
+     * timestamp-positioned directive: right-aligned so the text ends just before the staff content
+     * begins, within the whitespace reserved by System::m_systemLeftMar, and vertically centered on the
+     * staff - mirroring how a StaffDef/StaffGrp Label is drawn (see View::DrawStaffDefLabels), but reusing
+     * the margin whitespace directly rather than the separate ScoreDef::m_drawingLabelsWidth reservation.
+     * Carried over from a non-standard "system-label" attribute on a MusicXML direction-type/words element
+     * (see MusicXmlInput::ReadMusicXmlDirection). Has no effect if the system has no left margin set: the
+     * Dir then falls back to being drawn normally (see View::DrawControlElement). Default is false.
+     */
+    bool m_isSystemLabel = false;
+
 private:
     //
 };

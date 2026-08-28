@@ -109,8 +109,16 @@ void View::DrawControlElement(DeviceContext *dc, ControlElement *element, Measur
     else if (element->Is(DIR)) {
         Dir *dir = vrv_cast<Dir *>(element);
         assert(dir);
-        this->DrawControlElementText(dc, dir, measure, system);
-        system->AddToDrawingListIfNecessary(dir);
+        // A Dir opted into system-label rendering (see Dir::m_isSystemLabel) only actually renders as one
+        // if the system it lands on has a left margin reserving the whitespace it draws into - otherwise
+        // fall back to the normal floating, timestamp-positioned rendering below.
+        if (dir->m_isSystemLabel && (system->m_systemLeftMar != 0)) {
+            this->DrawDirAsSystemLabel(dc, dir, measure, system);
+        }
+        else {
+            this->DrawControlElementText(dc, dir, measure, system);
+            system->AddToDrawingListIfNecessary(dir);
+        }
     }
     else if (element->Is(DYNAM)) {
         Dynam *dynam = vrv_cast<Dynam *>(element);
@@ -1824,6 +1832,63 @@ void View::DrawControlElementText(DeviceContext *dc, ControlElement *element, Me
     }
 
     dc->EndGraphic(element, this);
+}
+
+void View::DrawDirAsSystemLabel(DeviceContext *dc, Dir *dir, Measure *measure, System *system)
+{
+    assert(dc);
+    assert(dir);
+    assert(measure);
+    assert(system);
+
+    // Cannot draw a dir that has no start position
+    TimePointInterface *interface = dir->GetTimePointInterface();
+    assert(interface);
+
+    LayerElement *start = interface->GetStart();
+    if (!start) return;
+
+    std::vector<Staff *> staffList = interface->GetTstampStaves(measure, dir);
+    if (staffList.empty()) return;
+    // A system label is drawn once, next to the (first) staff it is attached to - there is no notion of
+    // "above"/"below"/"between" here since it is not floating relative to the staff at all.
+    Staff *staff = staffList.front();
+
+    dc->StartGraphic(dir, "", dir->GetID());
+
+    FontInfo dirTxt;
+    if (!dc->UseGlobalStyling()) {
+        dirTxt.SetFaceName(m_doc->GetResources().GetTextFont());
+        dirTxt.SetStyle(FONTSTYLE_italic);
+    }
+
+    const int staffSize = staff->m_drawingStaffSize;
+    dirTxt.SetPointSize(m_doc->GetDrawingLyricFont(staffSize)->GetPointSize());
+
+    // Position within the whitespace reserved by the system's left margin, mirroring how a StaffDef
+    // label is drawn to the left of the staff (see View::DrawStaffDefLabels): right-aligned so the text
+    // ends just before the staff content begins (i.e. at the start of the measure, which already sits to
+    // the right of System::m_systemLeftMar - see AlignHorizontallyFunctor::VisitSystem), and vertically
+    // centered on the staff using the same "number of lines" formula used there.
+    const int doubleUnit = m_doc->GetDrawingDoubleUnit(staffSize);
+    const int space = doubleUnit;
+    const int x = measure->GetDrawingX() - space;
+    const int y = staff->GetDrawingY() - (staff->m_drawingLines * doubleUnit / 2);
+
+    TextDrawingParams params;
+    params.m_x = x;
+    params.m_y = y;
+    params.m_pointSize = dirTxt.GetPointSize();
+
+    dc->SetFont(&dirTxt);
+
+    dc->StartText(this->ToDeviceContextX(params.m_x), this->ToDeviceContextY(params.m_y), HORIZONTALALIGNMENT_right);
+    this->DrawTextChildren(dc, dir, params);
+    dc->EndText();
+
+    dc->ResetFont();
+
+    dc->EndGraphic(dir, this);
 }
 
 void View::DrawDynam(DeviceContext *dc, Dynam *dynam, Measure *measure, System *system)

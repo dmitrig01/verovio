@@ -2402,6 +2402,15 @@ void MusicXmlInput::ReadMusicXmlDirection(
                     + words.first().node().attribute("relative-y").as_double();
                 dir->m_drawingYOffset = std::lround(tenths * DEFINITION_FACTOR / 5.0);
             }
+            // Non-standard opt-in for rendering this directive as a system-left-margin label (like a
+            // StaffDef/StaffGrp label) instead of a normal floating, timestamp-positioned directive - see
+            // Dir::m_isSystemLabel and View::DrawControlElement/View::DrawDirAsSystemLabel. Only makes
+            // sense together with a left margin set on the enclosing system (see
+            // Sb::m_systemLeftMar/System::m_systemLeftMar from print/system-layout/system-margins); if
+            // there is no left margin, the flag is harmless and the Dir is drawn normally.
+            if (words.first().node().attribute("system-label").as_bool()) {
+                dir->m_isSystemLabel = true;
+            }
             // Only group directions that have explicit positioning in the source.
             // Directions without default-y/relative-y all map to vgrp=2000, causing
             // AdjustFloatingPositionerGrpsFunctor to equalize unrelated directions

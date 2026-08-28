@@ -2151,6 +2151,12 @@ void MEIOutput::WriteDir(pugi::xml_node currentNode, Dir *dir)
     if (dir->m_drawingYOffset != 0) {
         currentNode.append_attribute("vrv.yoffset") = StringFormat("%d", dir->m_drawingYOffset).c_str();
     }
+
+    // See MEIInput::ReadDir for why this is written here (round-tripping the system-label flag set from a
+    // non-standard MusicXML direction-type/words "system-label" attribute through score-based MEI).
+    if (dir->m_isSystemLabel) {
+        currentNode.append_attribute("vrv.systemlabel") = "true";
+    }
 }
 
 void MEIOutput::WriteDynam(pugi::xml_node currentNode, Dynam *dynam)
@@ -6066,6 +6072,14 @@ bool MEIInput::ReadDir(Object *parent, pugi::xml_node dir)
     if (dir.attribute("vrv.yoffset")) {
         vrvDir->m_drawingYOffset = dir.attribute("vrv.yoffset").as_int();
         dir.remove_attribute("vrv.yoffset");
+    }
+
+    // System-label flag carried over from a non-standard MusicXML direction-type/words "system-label"
+    // attribute (see MusicXmlInput::ReadMusicXmlDirection). Written out in WriteDir so that it survives a
+    // score-based MEI round trip (e.g., Toolkit::GetMEI() with the default scoreBased option).
+    if (dir.attribute("vrv.systemlabel")) {
+        vrvDir->m_isSystemLabel = dir.attribute("vrv.systemlabel").as_bool();
+        dir.remove_attribute("vrv.systemlabel");
     }
 
     parent->AddChild(vrvDir);
