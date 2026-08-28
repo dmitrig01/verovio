@@ -92,7 +92,16 @@ protected:
 private:
     //
 public:
-    //
+    /**
+     * Additional vertical offset (in internal drawing units scaled by DEFINITION_FACTOR, i.e. the same
+     * convention as System::m_systemLeftMar/m_systemRightMar and Tempo::m_drawingYOffset) carried over
+     * from a MusicXML direction/direction-type/words default-y and relative-y attribute. Applied on top of
+     * the automatically computed distance from the staff so that a plain directive's vertical position can
+     * be nudged, independent of and in addition to @vgrp (which is a grouping/equalization id, not a
+     * position - see MusicXmlInput::ReadMusicXmlDirection). Zero (the default) means no adjustment.
+     */
+    int m_drawingYOffset = 0;
+
 private:
     //
 };

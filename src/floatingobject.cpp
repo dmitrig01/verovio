@@ -489,13 +489,17 @@ void FloatingPositioner::CalcDrawingYRel(
             minStaffDistance += 2.5 * unit;
         }
 
-        // Additional manual vertical offset (currently only used by Tempo, see Tempo::m_drawingYOffset),
-        // carried over from a MusicXML default-y/relative-y attribute. Stored in the same DEFINITION_FACTOR
-        // scaled "vu" convention as System::m_systemLeftMar/m_systemRightMar; convert to drawing units here.
-        // A positive value always shifts the element higher on the page, regardless of @place.
+        // Additional manual vertical offset (currently used by Tempo and Dir, see Tempo::m_drawingYOffset
+        // and Dir::m_drawingYOffset), carried over from a MusicXML default-y/relative-y attribute. Stored in
+        // the same DEFINITION_FACTOR scaled "vu" convention as System::m_systemLeftMar/m_systemRightMar;
+        // convert to drawing units here. A positive value always shifts the element higher on the page,
+        // regardless of @place.
         int extraDistance = 0;
         if (m_object->Is(TEMPO)) {
             extraDistance = (vrv_cast<const Tempo *>(m_object)->m_drawingYOffset * unit) / DEFINITION_FACTOR;
+        }
+        else if (m_object->Is(DIR)) {
+            extraDistance = (vrv_cast<const Dir *>(m_object)->m_drawingYOffset * unit) / DEFINITION_FACTOR;
         }
 
         if (m_place == STAFFREL_above) {

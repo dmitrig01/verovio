@@ -2390,6 +2390,18 @@ void MusicXmlInput::ReadMusicXmlDirection(
             }
 
             this->TextRendition(words, dir);
+            // Additional, predictable vertical offset independent of @vgrp below (see Dir::m_drawingYOffset
+            // and Tempo::m_drawingYOffset for the identical mechanism, and FloatingPositioner::
+            // CalcDrawingYRel for how it is applied). @vgrp is a grouping/equalization id, not a position,
+            // so it cannot be used on its own to reliably nudge a single, ungrouped direction - this uses
+            // the same default-y/relative-y source but is a wholly separate field with a real effect on the
+            // computed drawing position.
+            if (!words.first().node().attribute("default-y").empty()
+                || !words.first().node().attribute("relative-y").empty()) {
+                const double tenths = words.first().node().attribute("default-y").as_double()
+                    + words.first().node().attribute("relative-y").as_double();
+                dir->m_drawingYOffset = std::lround(tenths * DEFINITION_FACTOR / 5.0);
+            }
             // Only group directions that have explicit positioning in the source.
             // Directions without default-y/relative-y all map to vgrp=2000, causing
             // AdjustFloatingPositionerGrpsFunctor to equalize unrelated directions
