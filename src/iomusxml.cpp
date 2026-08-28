@@ -2747,6 +2747,16 @@ void MusicXmlInput::ReadMusicXmlDirection(
                 ? words.first().node().attribute("xml:lang").as_string()
                 : "it";
             tempo->SetLang(lang);
+            // Vertical offset: MusicXML default-y/relative-y are in tenths (1 tenth is a fifth of a "vu",
+            // same convention as System::m_systemLeftMar/m_systemRightMar, see ReadMusicXmlPrint above).
+            // Positive default-y means higher on the page, consistent with the existing default-y handling
+            // for <dir> directives elsewhere in this function. Applied in FloatingPositioner::CalcDrawingYRel
+            // on top of the automatically computed distance from the staff.
+            if (words.first().node().attribute("default-y") || words.first().node().attribute("relative-y")) {
+                const double tenths = words.first().node().attribute("default-y").as_double()
+                    + words.first().node().attribute("relative-y").as_double();
+                tempo->m_drawingYOffset = std::lround(tenths * DEFINITION_FACTOR / 5.0);
+            }
         }
         tempo->SetPlace(tempo->AttPlacementRelStaff::StrToStaffrel(placeStr.c_str()));
         if (words.size() != 0) TextRendition(words, tempo);

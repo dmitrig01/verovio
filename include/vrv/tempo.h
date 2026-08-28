@@ -108,7 +108,15 @@ public:
 private:
     //
 public:
-    //
+    /**
+     * Additional vertical offset (in internal drawing units scaled by DEFINITION_FACTOR, i.e. the same
+     * convention as System::m_systemLeftMar/m_systemRightMar) carried over from a MusicXML
+     * direction/direction-type/words default-y and relative-y attribute. Applied on top of the
+     * automatically computed distance from the staff so that a tempo marking's vertical position can be
+     * nudged. Zero (the default) means no adjustment.
+     */
+    int m_drawingYOffset = 0;
+
 private:
     std::map<int, int> m_drawingXRels;
 };

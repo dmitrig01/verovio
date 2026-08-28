@@ -2374,6 +2374,12 @@ void MEIOutput::WriteTempo(pugi::xml_node currentNode, Tempo *tempo)
     tempo->WriteLang(currentNode);
     tempo->WriteMidiTempo(currentNode);
     tempo->WriteMmTempo(currentNode);
+
+    // See MEIInput::ReadTempo for why this is written here (round-tripping the vertical offset set from
+    // a MusicXML direction/direction-type/words default-y and relative-y attribute through score-based MEI).
+    if (tempo->m_drawingYOffset != 0) {
+        currentNode.append_attribute("vrv.yoffset") = StringFormat("%d", tempo->m_drawingYOffset).c_str();
+    }
 }
 
 void MEIOutput::WriteTie(pugi::xml_node currentNode, Tie *tie)
@@ -6321,6 +6327,14 @@ bool MEIInput::ReadTempo(Object *parent, pugi::xml_node tempo)
     vrvTempo->ReadLang(tempo);
     vrvTempo->ReadMidiTempo(tempo);
     vrvTempo->ReadMmTempo(tempo);
+
+    // Vertical offset carried over from a MusicXML default-y/relative-y attribute (see
+    // MusicXmlInput::ReadMusicXmlDirection). Written out in WriteTempo so that it survives a score-based
+    // MEI round trip (e.g., Toolkit::GetMEI() with the default scoreBased option).
+    if (tempo.attribute("vrv.yoffset")) {
+        vrvTempo->m_drawingYOffset = tempo.attribute("vrv.yoffset").as_int();
+        tempo.remove_attribute("vrv.yoffset");
+    }
 
     parent->AddChild(vrvTempo);
     this->ReadUnsupportedAttr(tempo, vrvTempo);

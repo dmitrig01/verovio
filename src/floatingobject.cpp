@@ -489,11 +489,23 @@ void FloatingPositioner::CalcDrawingYRel(
             minStaffDistance += 2.5 * unit;
         }
 
+        // Additional manual vertical offset (currently only used by Tempo, see Tempo::m_drawingYOffset),
+        // carried over from a MusicXML default-y/relative-y attribute. Stored in the same DEFINITION_FACTOR
+        // scaled "vu" convention as System::m_systemLeftMar/m_systemRightMar; convert to drawing units here.
+        // A positive value always shifts the element higher on the page, regardless of @place.
+        int extraDistance = 0;
+        if (m_object->Is(TEMPO)) {
+            extraDistance = (vrv_cast<const Tempo *>(m_object)->m_drawingYOffset * unit) / DEFINITION_FACTOR;
+        }
+
         if (m_place == STAFFREL_above) {
             yRel = this->GetContentY1();
             yRel -= doc->GetBottomMargin(m_object->GetClassId()) * unit;
             this->SetDrawingYRel(yRel);
             this->SetDrawingYRel(-minStaffDistance);
+            if (extraDistance != 0) {
+                this->SetDrawingYRel(this->GetDrawingYRel() - extraDistance, true);
+            }
         }
         else if (m_place == STAFFREL_within) {
             yRel = staffAlignment->GetStaffHeight() / 2;
@@ -512,6 +524,9 @@ void FloatingPositioner::CalcDrawingYRel(
             yRel += doc->GetTopMargin(m_object->GetClassId()) * unit;
             this->SetDrawingYRel(yRel);
             this->SetDrawingYRel(minStaffDistance + staffAlignment->GetStaffHeight());
+            if (extraDistance != 0) {
+                this->SetDrawingYRel(this->GetDrawingYRel() - extraDistance, true);
+            }
         }
     }
     else {
