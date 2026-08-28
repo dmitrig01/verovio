@@ -512,10 +512,11 @@ void View::DrawMetronomeNoteSymbol(DeviceContext *dc, Rend *rend, TextDrawingPar
     assert(rend->m_metronomeNoteDur != DURATION_NONE);
 
     // Metronome note symbols are conventionally drawn noticeably smaller than real noteheads on the
-    // staff - roughly half the linear size. Scaling every staffSize-driven metric below (notehead,
-    // stem width/length, flag) by the same factor keeps them proportioned to each other exactly like
-    // a real note's glyph/stem/flag are to one another at that (smaller) size.
-    const int staffSize = std::max(1, params.m_staffSize / 2);
+    // staff - roughly 60% of the linear size (half, then bumped back up ~20% after visual review).
+    // Scaling every staffSize-driven metric below (notehead, stem width/length, flag) by the same
+    // factor keeps them proportioned to each other exactly like a real note's glyph/stem/flag are to
+    // one another at that (smaller) size.
+    const int staffSize = std::max(1, (int)std::lround(params.m_staffSize * 0.6));
     const data_DURATION dur = rend->m_metronomeNoteDur;
 
     // Notehead shape mirrors real notation (cf. Note::GetNoteheadGlyph): open for breve/whole, filled
@@ -552,13 +553,23 @@ void View::DrawMetronomeNoteSymbol(DeviceContext *dc, Rend *rend, TextDrawingPar
     // back to this Rend's own (possibly run-start) GetContentLeft()/params.m_x when there is no such
     // preceding sibling, i.e. this Rend genuinely is first in the run.
     int x = params.m_x;
+    // Small leading gap applied only when anchoring off a preceding sibling (below) - ordinary
+    // inter-character spacing so the notehead reads as sitting in its own space rather than flush
+    // against whatever came before it (e.g. the "(" in "Moderato (<note> = 104)"). Not applied when
+    // this Rend is first in the run (no preceding sibling): there is nothing for it to look jammed
+    // against, and doing so would needlessly shift the whole tempo mark off its intended anchor.
+    const int gap = m_doc->GetDrawingUnit(staffSize) / 3;
+    int trailingGap = 0;
     if (Object *parent = rend->GetParent()) {
         Object *prev = parent->GetPrevious(rend);
         while (prev && !prev->HasContentBB()) {
             prev = parent->GetPrevious(prev);
         }
         if (prev) {
-            x = prev->GetContentRight();
+            x = prev->GetContentRight() + gap;
+            // Keep the trailing gap before whatever follows (e.g. " = 104)") consistent with the
+            // leading one, since resumeX below is otherwise computed from the pre-nudge geometry.
+            trailingGap = gap;
         }
         else if (rend->HasContentBB()) {
             x = rend->GetContentLeft();
@@ -567,7 +578,7 @@ void View::DrawMetronomeNoteSymbol(DeviceContext *dc, Rend *rend, TextDrawingPar
     else if (rend->HasContentBB()) {
         x = rend->GetContentLeft();
     }
-    const int resumeX = rend->HasContentBB() ? rend->GetContentRight() : x;
+    const int resumeX = (rend->HasContentBB() ? rend->GetContentRight() : x) + trailingGap;
     // Metronome/individual-note SMuFL glyphs are designed so the notehead sits essentially on the
     // text baseline (confirmed from the Leipzig and Bravura glyph metrics: e.g. Leipzig's
     // metNoteQuarterUp notehead portion spans roughly [-126, 140] font units around the baseline),
