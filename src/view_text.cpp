@@ -511,7 +511,11 @@ void View::DrawMetronomeNoteSymbol(DeviceContext *dc, Rend *rend, TextDrawingPar
     assert(rend);
     assert(rend->m_metronomeNoteDur != DURATION_NONE);
 
-    const int staffSize = params.m_staffSize;
+    // Metronome note symbols are conventionally drawn noticeably smaller than real noteheads on the
+    // staff - roughly half the linear size. Scaling every staffSize-driven metric below (notehead,
+    // stem width/length, flag) by the same factor keeps them proportioned to each other exactly like
+    // a real note's glyph/stem/flag are to one another at that (smaller) size.
+    const int staffSize = std::max(1, params.m_staffSize / 2);
     const data_DURATION dur = rend->m_metronomeNoteDur;
 
     // Notehead shape mirrors real notation (cf. Note::GetNoteheadGlyph): open for breve/whole, filled
@@ -533,13 +537,37 @@ void View::DrawMetronomeNoteSymbol(DeviceContext *dc, Rend *rend, TextDrawingPar
     const bool hasStem = (dur >= DURATION_2);
     const int flagCount = (dur > DURATION_4) ? ((int)dur - (int)DURATION_4) : 0;
 
-    // Anchor: reuse the bounding box already computed for this Rend during the (unconditional)
-    // BBoxDeviceContext layout pass in Page::LayOutHorizontally/LayOutVertically, back when
-    // View::DrawRend still drew the single fallback glyph (see there) - this is the only place
-    // Verovio itself knows this Rend's absolute pen position within the surrounding inline tempo
-    // text. Fall back to the Tempo's own anchor if, for some reason, it was never computed.
-    const int x = rend->HasContentBB() ? rend->GetContentLeft() : params.m_x;
-    const int resumeX = rend->HasContentBB() ? rend->GetContentRight() : params.m_x;
+    // Anchor: BBoxDeviceContext::DrawText (the "measuring" DeviceContext used during the layout pass
+    // that computed this Rend's content bounding box, back when View::DrawRend still drew the single
+    // fallback glyph there - see above) always calls UpdateBB(m_textX, ..., m_textX + m_textWidth, ...),
+    // i.e. its LEFT edge is always the *whole inline text run's* start position (m_textX, set once by
+    // dc->StartText() and never advanced) and only its RIGHT edge (m_textX + m_textWidth) reflects the
+    // true accumulated pen position. That makes rend->GetContentRight() a reliable absolute position
+    // for wherever this Rend's own content ends, but rend->GetContentLeft() is *not* reliable as this
+    // Rend's own left edge - it degrades to the run's start, which is only coincidentally correct when
+    // this Rend happens to be the first thing drawn in the run (e.g. no preceding tempo word/paren).
+    // The true left edge of this Rend is exactly where the previous sibling's content ended (SVG's
+    // plain <tspan> concatenation flows text with no gap), so walk back to the nearest preceding
+    // sibling with a computed content bounding box and anchor on its right edge instead. Only fall
+    // back to this Rend's own (possibly run-start) GetContentLeft()/params.m_x when there is no such
+    // preceding sibling, i.e. this Rend genuinely is first in the run.
+    int x = params.m_x;
+    if (Object *parent = rend->GetParent()) {
+        Object *prev = parent->GetPrevious(rend);
+        while (prev && !prev->HasContentBB()) {
+            prev = parent->GetPrevious(prev);
+        }
+        if (prev) {
+            x = prev->GetContentRight();
+        }
+        else if (rend->HasContentBB()) {
+            x = rend->GetContentLeft();
+        }
+    }
+    else if (rend->HasContentBB()) {
+        x = rend->GetContentLeft();
+    }
+    const int resumeX = rend->HasContentBB() ? rend->GetContentRight() : x;
     // Metronome/individual-note SMuFL glyphs are designed so the notehead sits essentially on the
     // text baseline (confirmed from the Leipzig and Bravura glyph metrics: e.g. Leipzig's
     // metNoteQuarterUp notehead portion spans roughly [-126, 140] font units around the baseline),
