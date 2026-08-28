@@ -63,7 +63,15 @@ public:
 private:
     //
 public:
-    //
+    /**
+     * System left and right margins (MusicXML print/system-layout/system-margins) carried over from import
+     * so that they can be transferred to the System object created from this Sb during cast off.
+     * Left as VRV_UNSET when not read from the MusicXML source.
+     */
+    ///@{
+    int m_systemLeftMar = VRV_UNSET;
+    int m_systemRightMar = VRV_UNSET;
+    ///@}
 private:
     //
 };

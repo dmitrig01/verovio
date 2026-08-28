@@ -10,6 +10,7 @@
 //----------------------------------------------------------------------------
 
 #include <cassert>
+#include <cmath>
 #include <numeric>
 #include <regex>
 #include <sstream>
@@ -3995,6 +3996,20 @@ void MusicXmlInput::ReadMusicXmlPrint(pugi::xml_node node, Section *section)
 
     if (node.attribute("new-system").as_bool()) {
         Sb *sb = new Sb();
+        pugi::xml_node systemMargins = node.child("system-layout").child("system-margins");
+        if (systemMargins) {
+            // MusicXML tenths are converted the same way MEI system.leftmar/rightmar values are stored
+            // internally: 1 tenth is a fifth of a "vu" (half the distance between two staff lines), and vu
+            // values are stored internally scaled by DEFINITION_FACTOR (see System::m_systemLeftMar).
+            if (systemMargins.child("left-margin")) {
+                sb->m_systemLeftMar = std::lround(
+                    systemMargins.child("left-margin").text().as_double() * DEFINITION_FACTOR / 5.0);
+            }
+            if (systemMargins.child("right-margin")) {
+                sb->m_systemRightMar = std::lround(
+                    systemMargins.child("right-margin").text().as_double() * DEFINITION_FACTOR / 5.0);
+            }
+        }
         section->AddChild(sb);
     }
 

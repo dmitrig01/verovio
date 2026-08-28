@@ -500,6 +500,10 @@ FunctorCode CastOffEncodingFunctor::VisitSb(Sb *sb)
     }
 
     assert(m_currentSystem);
+    // Carry over system margins read from a MusicXML print/system-layout/system-margins element (see
+    // MusicXmlInput::ReadMusicXmlPrint) onto the System that this <sb> starts.
+    if (sb->m_systemLeftMar != VRV_UNSET) m_currentSystem->m_systemLeftMar = sb->m_systemLeftMar;
+    if (sb->m_systemRightMar != VRV_UNSET) m_currentSystem->m_systemRightMar = sb->m_systemRightMar;
     sb->MoveItselfTo(m_currentSystem);
 
     return FUNCTOR_SIBLINGS;
