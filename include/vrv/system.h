@@ -197,6 +197,14 @@ public:
      */
     bool m_noJustify = false;
     /**
+     * Vertical distance from the previous system (MEI-external; see Sb::m_systemDistance and
+     * MusicXmlInput::ReadMusicXmlPrint), in the same DEFINITION_FACTOR-scaled "vu" convention as
+     * m_systemLeftMar/m_systemRightMar. Can be negative. Carried over from the Sb that started this system
+     * during cast off (see CastOffEncodingFunctor::VisitSb) and consumed by AlignSystemsFunctor::VisitSystem.
+     * VRV_UNSET (the default, reset in System::Reset) means normal automatic system spacing applies.
+     */
+    int m_systemDistance = VRV_UNSET;
+    /**
      * The Y absolute position of the staff for facsimile (transcription) encodings.
      * This is the top left corner of the system.
      */

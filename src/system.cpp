@@ -75,6 +75,7 @@ void System::Reset()
     m_systemLeftMar = 0;
     m_systemRightMar = 0;
     m_noJustify = false;
+    m_systemDistance = VRV_UNSET;
     m_drawingFacsX = VRV_UNSET;
     m_drawingXRel = 0;
     m_drawingFacsY = VRV_UNSET;

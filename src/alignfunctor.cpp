@@ -831,7 +831,16 @@ FunctorCode AlignSystemsFunctor::VisitSystem(System *system)
         // const int contentOverflow = m_prevBottomOverflow + systemAligner.GetOverflowAbove(m_doc);
         // const int clefOverflow = m_prevBottomClefOverflow + systemAligner.GetOverflowAbove(m_doc, true);
         const int unit = m_doc->GetDrawingUnit(100);
-        m_shift -= std::max(m_systemSpacing, 2 * unit);
+        if (system->m_systemDistance != VRV_UNSET) {
+            // Explicit override (see System::m_systemDistance / MusicXML print/system-layout/system-distance):
+            // use it as-is, including when negative (pulling this system closer to the previous one, even
+            // overlapping) - unlike the automatic case below, no minimum spacing is enforced here since the
+            // whole point is to allow a precise, possibly tight, user-requested distance.
+            m_shift -= (system->m_systemDistance * unit) / DEFINITION_FACTOR;
+        }
+        else {
+            m_shift -= std::max(m_systemSpacing, 2 * unit);
+        }
     }
 
     system->SetDrawingYRel(m_shift);

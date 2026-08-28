@@ -81,6 +81,16 @@ public:
      */
     bool m_noJustify = false;
 
+    /**
+     * Vertical distance from the previous system (MusicXML print/system-layout/system-distance), in the
+     * same DEFINITION_FACTOR-scaled "vu" convention as m_systemLeftMar/m_systemRightMar. Can be negative
+     * (pulling two systems closer together, even overlapping). Carried over from import (see
+     * MusicXmlInput::ReadMusicXmlPrint) so that it can be transferred to the System object created from
+     * this Sb during cast off (see CastOffEncodingFunctor::VisitSb). Left as VRV_UNSET when not read from
+     * the MusicXML source, in which case normal automatic system spacing applies.
+     */
+    int m_systemDistance = VRV_UNSET;
+
 private:
     //
 };

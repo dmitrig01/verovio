@@ -4031,7 +4031,8 @@ void MusicXmlInput::ReadMusicXmlPrint(pugi::xml_node node, Section *section)
 
     if (node.attribute("new-system").as_bool()) {
         Sb *sb = new Sb();
-        pugi::xml_node systemMargins = node.child("system-layout").child("system-margins");
+        pugi::xml_node systemLayout = node.child("system-layout");
+        pugi::xml_node systemMargins = systemLayout.child("system-margins");
         if (systemMargins) {
             // MusicXML tenths are converted the same way MEI system.leftmar/rightmar values are stored
             // internally: 1 tenth is a fifth of a "vu" (half the distance between two staff lines), and vu
@@ -4044,6 +4045,13 @@ void MusicXmlInput::ReadMusicXmlPrint(pugi::xml_node node, Section *section)
                 sb->m_systemRightMar = std::lround(
                     systemMargins.child("right-margin").text().as_double() * DEFINITION_FACTOR / 5.0);
             }
+        }
+        if (systemLayout.child("system-distance")) {
+            // Same tenths-to-internal-unit convention as system-margins above (see Sb::m_systemDistance).
+            // Unlike the margins, this is a real vertical distance (not a boolean-ish clamp), and MusicXML
+            // explicitly allows it to be negative to pull two systems closer together (even overlapping).
+            sb->m_systemDistance = std::lround(
+                systemLayout.child("system-distance").text().as_double() * DEFINITION_FACTOR / 5.0);
         }
         // Non-standard, invented attribute (MusicXML has no element/attribute for this): a downstream
         // pipeline can request that this system never be stretched by horizontal justification (rendered

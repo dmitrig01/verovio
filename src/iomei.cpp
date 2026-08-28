@@ -1808,6 +1808,14 @@ void MEIOutput::WriteSb(pugi::xml_node currentNode, Sb *sb)
     if (sb->m_noJustify) {
         currentNode.append_attribute("vrv.nojustify") = "true";
     }
+    // Non-standard vertical distance from the previous system (see MusicXmlInput::ReadMusicXmlPrint and
+    // CastOffEncodingFunctor::VisitSb). Written out here for the same score-based MEI round-trip reason as
+    // the system margins above. Stored using the same DEFINITION_FACTOR-scaled convention (undone here, as
+    // for the margins), and can be negative.
+    if (sb->m_systemDistance != VRV_UNSET) {
+        currentNode.append_attribute("vrv.sysdistance")
+            = StringFormat("%d", sb->m_systemDistance / DEFINITION_FACTOR).c_str();
+    }
 }
 
 void MEIOutput::WriteScoreDefElement(pugi::xml_node currentNode, ScoreDefElement *scoreDefElement)
@@ -4882,6 +4890,11 @@ bool MEIInput::ReadSb(Object *parent, pugi::xml_node sb)
     if (sb.attribute("vrv.nojustify")) {
         vrvSb->m_noJustify = sb.attribute("vrv.nojustify").as_bool();
         sb.remove_attribute("vrv.nojustify");
+    }
+    // Non-standard vertical distance from the previous system (can be negative); see WriteSb.
+    if (sb.attribute("vrv.sysdistance")) {
+        vrvSb->m_systemDistance = sb.attribute("vrv.sysdistance").as_int() * DEFINITION_FACTOR;
+        sb.remove_attribute("vrv.sysdistance");
     }
 
     parent->AddChild(vrvSb);
