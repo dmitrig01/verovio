@@ -1868,24 +1868,58 @@ void View::DrawDirAsSystemLabel(DeviceContext *dc, Dir *dir, Measure *measure, S
     // Position within the whitespace reserved by the system's left margin, mirroring how a StaffDef
     // label is drawn to the left of the staff (see View::DrawStaffDefLabels): right-aligned so the text
     // ends just before the staff content begins (i.e. at the start of the measure, which already sits to
-    // the right of System::m_systemLeftMar - see AlignHorizontallyFunctor::VisitSystem), and vertically
-    // centered on the staff using the same "number of lines" formula used there.
+    // the right of System::m_systemLeftMar - see AlignHorizontallyFunctor::VisitSystem).
     const int doubleUnit = m_doc->GetDrawingDoubleUnit(staffSize);
     const int space = doubleUnit;
     const int x = measure->GetDrawingX() - space;
-    int y = staff->GetDrawingY() - (staff->m_drawingLines * doubleUnit / 2);
 
-    // The formula above (same as View::DrawStaffDefLabels) computes a Y that is meant as a visual
-    // center of the staff, not a text baseline. Drawing the text baseline directly at that Y leaves
-    // the glyph body - which extends upward from its baseline - sitting visibly above the true center.
-    // Apply the same baseline-to-visual-center correction used by View::DrawControlElementText when it
-    // centers Dir/Dynam text at a computed Y (STAFFREL_between/within): account for extra lines, then
-    // shift down by half the font's x-height so the glyphs themselves end up centered on the target Y.
+    // Vertical centering. View::DrawStaffDefLabels computes its target Y as
+    // `staff->GetDrawingY() - (lines * doubleUnit / 2)`, i.e. topLine - lines/2 spaces. Since
+    // staff->GetDrawingY() is the top line and the staff spans (lines - 1) spaces top-to-bottom, that
+    // formula actually lands half a space (doubleUnit / 2) below the true geometric center of the staff
+    // - a small, constant, font-independent undershoot. For StaffDef labels this goes unnoticed because
+    // it happens to roughly cancel against the opposite baseline-vs-visual-center error described below
+    // for typical (small, default-sized) label text. Since a system label's text size varies a lot more
+    // (see below), start from the actually-correct geometric center instead of copying the same
+    // approximation: topLine - (lines - 1) spaces / 2.
+    int y = staff->GetDrawingY() - ((staff->m_drawingLines - 1) * doubleUnit / 2);
+
+    // That center Y is a visual center, not a text baseline: drawing the text baseline directly there
+    // leaves the glyph body - which extends upward from its baseline, with nothing but a period below it
+    // for text like "var." - sitting visibly above center. Shift the baseline down by half the text's
+    // x-height so the glyphs themselves end up centered on the target Y, the same baseline-to-visual-
+    // center correction View::DrawControlElementText applies when centering Dir/Dynam text at a computed
+    // Y (STAFFREL_between/within): account for extra lines, then shift down by half the x-height.
+    //
+    // Use the *effective* font actually used to draw this label - not just the container-level default
+    // dirTxt - for that x-height/line-height math. A system label commonly carries an explicit MusicXML
+    // @font-size on its <words> (e.g. "var."), which View::DrawRend converts into a much larger Rend-level
+    // FontInfo further down in DrawTextChildren; dirTxt never sees that override. Using dirTxt's (smaller,
+    // default) x-height would under-correct for the actual (larger) rendered glyphs, leaving them still
+    // visibly high. Mirror View::DrawRend's own point-size conversion so the correction matches reality.
+    FontInfo effectiveTxt = dirTxt;
+    ListOfObjects rends = dir->FindAllDescendantsByType(REND);
+    for (Object *object : rends) {
+        Rend *rend = vrv_cast<Rend *>(object);
+        if (!rend->HasFontsize()) continue;
+        data_FONTSIZE *fs = rend->GetFontsizeAlternate();
+        if (fs->GetType() == FONTSIZE_fontSizeNumeric) {
+            effectiveTxt.SetPointSize(std::lround(fs->GetFontSizeNumeric() * POINT_TO_INTERNAL_UNIT));
+        }
+        else if (fs->GetType() == FONTSIZE_term) {
+            effectiveTxt.SetPointSize(dirTxt.GetPointSize() * fs->GetPercentForTerm() / 100);
+        }
+        else if (fs->GetType() == FONTSIZE_percent) {
+            effectiveTxt.SetPointSize(dirTxt.GetPointSize() * fs->GetPercent() / 100);
+        }
+        break;
+    }
+
     const int lineCount = dir->GetTextDirInterface()->GetNumberOfLines(dir);
     if (lineCount > 1) {
-        y += (m_doc->GetTextLineHeight(&dirTxt, false) * (lineCount - 1) / 2);
+        y += (m_doc->GetTextLineHeight(&effectiveTxt, false) * (lineCount - 1) / 2);
     }
-    y -= m_doc->GetTextXHeight(&dirTxt, false) / 2;
+    y -= m_doc->GetTextXHeight(&effectiveTxt, false) / 2;
 
     TextDrawingParams params;
     params.m_x = x;
