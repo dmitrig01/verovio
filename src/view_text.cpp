@@ -394,7 +394,14 @@ void View::DrawRend(DeviceContext *dc, Rend *rend, TextDrawingParams &params)
     // pass, draw compositionally instead, reusing that already-computed bounding box as the anchor.
     if (rend->HasGlyphAuth() && (rend->GetGlyphAuth() == "smufl") && (rend->m_metronomeNoteDur != DURATION_NONE)
         && !dc->Is(BBOX_DEVICE_CONTEXT)) {
+        // EndTextGraphic() only closes the <tspan> pushed by StartTextGraphic() above (the fallback
+        // glyph's wrapper) - it does NOT close the enclosing <text> element that View::DrawTempo
+        // opened with dc->StartText(). SVG's content model does not allow <use>/<path> as children of
+        // <text> (only character data and <tspan>/<textPath>), so the <text> block must actually be
+        // closed here, before View::DrawMetronomeNoteSymbol draws the notehead/stem/flag, for those
+        // to land as true siblings of <text> in the parent <g> rather than invalid descendants of it.
         dc->EndTextGraphic(rend, this);
+        dc->EndText();
         this->DrawMetronomeNoteSymbol(dc, rend, params);
         return;
     }
@@ -589,8 +596,9 @@ void View::DrawMetronomeNoteSymbol(DeviceContext *dc, Rend *rend, TextDrawingPar
     // Resume the inline SVG text flow (a new <text> sibling) exactly where the fallback glyph's
     // bounding box ended, so later siblings (augmentation dots, " = 88", etc.) land where the old
     // single-character approach would have put them. The <text> opened once in View::DrawTempo was
-    // already closed by the caller's dc->EndTextGraphic(rend, this) plus this dc->EndText() call.
-    dc->EndText();
+    // already closed by the caller (dc->EndTextGraphic(rend, this) followed by dc->EndText()) before
+    // this function drew the notehead/stem/flag above, so the <use>/<path> elements just drawn are
+    // true siblings of that closed <text>, not descendants of it.
     dc->StartText(this->ToDeviceContextX(resumeX), this->ToDeviceContextY(y), HORIZONTALALIGNMENT_left);
 }
 
