@@ -3186,6 +3186,12 @@ void MEIOutput::WriteRend(pugi::xml_node currentNode, Rend *rend)
     rend->WriteTextRendition(currentNode);
     rend->WriteTypography(currentNode);
     rend->WriteWhitespace(currentNode);
+
+    // Non-standard, round-tripped like Dir::m_drawingYOffset/m_isSystemLabel (see vrv.yoffset/
+    // vrv.systemlabel above) - see Rend::m_metronomeNoteDur for what this drives.
+    if (rend->m_metronomeNoteDur != DURATION_NONE) {
+        currentNode.append_attribute("vrv.mmnotedur") = StringFormat("%d", (int)rend->m_metronomeNoteDur).c_str();
+    }
 }
 
 void MEIOutput::WriteSvg(pugi::xml_node currentNode, Svg *svg)
@@ -7773,6 +7779,11 @@ bool MEIInput::ReadRend(Object *parent, pugi::xml_node rend)
         LogWarning("Using rend@fontname with 'VerovioText' is deprecated. Use 'rend@glyph.auth=\"smufl\"' instead");
         vrvRend->SetGlyphAuth("smufl");
         vrvRend->SetFontname("");
+    }
+
+    if (rend.attribute("vrv.mmnotedur")) {
+        vrvRend->m_metronomeNoteDur = (data_DURATION)rend.attribute("vrv.mmnotedur").as_int();
+        rend.remove_attribute("vrv.mmnotedur");
     }
 
     parent->AddChild(vrvRend);

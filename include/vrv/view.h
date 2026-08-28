@@ -374,6 +374,12 @@ protected:
     void DrawLb(DeviceContext *dc, Lb *lb, TextDrawingParams &params);
     void DrawNum(DeviceContext *dc, Num *num, TextDrawingParams &params);
     void DrawRend(DeviceContext *dc, Rend *rend, TextDrawingParams &params);
+    /**
+     * Draws a metronome beat-unit note symbol (Rend::m_metronomeNoteDur) compositionally - notehead
+     * glyph + independently drawn stem/flag - instead of a single all-in-one SMuFL character.
+     * Called from DrawRend. See Rend::m_metronomeNoteDur for the rationale.
+     */
+    void DrawMetronomeNoteSymbol(DeviceContext *dc, Rend *rend, TextDrawingParams &params);
     void DrawGraphic(DeviceContext *dc, Graphic *graphic, TextDrawingParams &params, int staffSize, bool dimin);
     void DrawSvg(DeviceContext *dc, Svg *svg, TextDrawingParams &params, int staffSize, bool dimin);
     void DrawSymbol(DeviceContext *dc, Symbol *symbol, TextDrawingParams &params);

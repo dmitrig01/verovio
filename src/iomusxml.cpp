@@ -815,29 +815,49 @@ void MusicXmlInput::PrintMetronome(pugi::xml_node metronome, Tempo *tempo)
     for (auto iter = metronomeElements.begin(); iter != metronomeElements.end(); ++iter) {
         switch (iter->first) {
             case MetronomeElements::BEAT_UNIT: {
-                std::u32string verovioText = ConvertTypeToVerovioText(iter->second);
+                const data_DURATION verovioDur = ConvertTypeToDur(iter->second);
+                const std::u32string verovioText = ConvertTypeToVerovioText(iter->second);
                 // find separator or use end() if there is no separator
                 const auto separator = std::find_if(iter, metronomeElements.end(),
                     [](const auto pair) { return pair.first == MetronomeElements::SEPARATOR; });
                 const short int dotCount = (short int)std::count_if(
                     iter, separator, [](const auto pair) { return pair.first == MetronomeElements::BEAT_UNIT_DOT; });
+                // Build the augmentation dot(s) as their own text run (unchanged from before) rather
+                // than appending them to verovioText below, so that the note-symbol Rend created below
+                // contains only the note character itself. That keeps its bounding box - which
+                // View::DrawMetronomeNoteSymbol reuses as the absolute anchor for its compositional
+                // notehead+stem drawing (see Rend::m_metronomeNoteDur) - limited to just the note glyph.
+                std::u32string dotsText;
                 for (short int i = 0; i < dotCount; ++i) {
-                    verovioText += UTF8to32(" ");
-                    verovioText += U"\xECB7"; // SMUFL augmentation dot
+                    dotsText += UTF8to32(" ");
+                    dotsText += U"\xECB7"; // SMUFL augmentation dot
                 }
                 // set @mmUnit and @mmDots attributes only based on the first beat-unit in the sequence
                 if (start) {
-                    tempo->SetMmUnit(ConvertTypeToDur(iter->second));
+                    tempo->SetMmUnit(verovioDur);
                     if (dotCount) tempo->SetMmDots(dotCount);
                     start = false;
                 }
                 if (!verovioText.empty()) {
                     Rend *rend = new Rend;
                     rend->SetGlyphAuth("smufl");
+                    // Mark this Rend as a metronome beat-unit note symbol so View::DrawRend draws it
+                    // compositionally instead of as the single all-in-one SMuFL character in the Text
+                    // child below (kept as a round-trip/layout-pass fallback - see
+                    // Rend::m_metronomeNoteDur for the rationale).
+                    rend->m_metronomeNoteDur = verovioDur;
                     Text *text = new Text();
                     text->SetText(verovioText);
                     rend->AddChild(text);
                     tempo->AddChild(rend);
+                }
+                if (!dotsText.empty()) {
+                    Rend *dotsRend = new Rend;
+                    dotsRend->SetGlyphAuth("smufl");
+                    Text *text = new Text();
+                    text->SetText(dotsText);
+                    dotsRend->AddChild(text);
+                    tempo->AddChild(dotsRend);
                 }
                 break;
             }

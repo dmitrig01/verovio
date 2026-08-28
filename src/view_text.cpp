@@ -25,6 +25,7 @@
 #include "f.h"
 #include "fb.h"
 #include "fig.h"
+#include "glyph.h"
 #include "graphic.h"
 #include "lb.h"
 #include "num.h"
@@ -33,6 +34,7 @@
 #include "pgfoot.h"
 #include "pghead.h"
 #include "rend.h"
+#include "resources.h"
 #include "smufl.h"
 #include "staff.h"
 #include "svg.h"
@@ -383,6 +385,20 @@ void View::DrawRend(DeviceContext *dc, Rend *rend, TextDrawingParams &params)
         }
     }
 
+    // A metronome beat-unit note symbol (see Rend::m_metronomeNoteDur). During the BBoxDeviceContext
+    // layout pass, fall through to the normal single-glyph drawing below: that gives an accurate
+    // enough bounding box from real font metrics for horizontal spacing/justification, and - just as
+    // important - it is the only place Verovio itself ever computes this Rend's absolute position
+    // within the surrounding inline tempo text (the final SVG pass otherwise delegates inline text
+    // flow positioning entirely to the SVG renderer via plain <tspan> concatenation). In the real SVG
+    // pass, draw compositionally instead, reusing that already-computed bounding box as the anchor.
+    if (rend->HasGlyphAuth() && (rend->GetGlyphAuth() == "smufl") && (rend->m_metronomeNoteDur != DURATION_NONE)
+        && !dc->Is(BBOX_DEVICE_CONTEXT)) {
+        dc->EndTextGraphic(rend, this);
+        this->DrawMetronomeNoteSymbol(dc, rend, params);
+        return;
+    }
+
     FontInfo rendFont;
     bool customFont = false;
     if (rend->HasFontname()) {
@@ -480,6 +496,102 @@ void View::DrawRend(DeviceContext *dc, Rend *rend, TextDrawingParams &params)
     }
 
     dc->EndTextGraphic(rend, this);
+}
+
+void View::DrawMetronomeNoteSymbol(DeviceContext *dc, Rend *rend, TextDrawingParams &params)
+{
+    assert(dc);
+    assert(rend);
+    assert(rend->m_metronomeNoteDur != DURATION_NONE);
+
+    const int staffSize = params.m_staffSize;
+    const data_DURATION dur = rend->m_metronomeNoteDur;
+
+    // Notehead shape mirrors real notation (cf. Note::GetNoteheadGlyph): open for breve/whole, filled
+    // for half and shorter. Only breve/whole/half/quarter-and-shorter are reachable here - these are
+    // the only shapes MusicXmlInput::ConvertTypeToVerovioText produces a Rend for.
+    char32_t noteheadCode = SMUFL_E0A4_noteheadBlack;
+    if (dur == DURATION_breve) {
+        noteheadCode = SMUFL_E0A0_noteheadDoubleWhole;
+    }
+    else if (dur == DURATION_1) {
+        noteheadCode = SMUFL_E0A2_noteheadWhole;
+    }
+    else if (dur == DURATION_2) {
+        noteheadCode = SMUFL_E0A3_noteheadHalf;
+    }
+    // Half and shorter get a stem (breve/whole do not); flag count follows the same beam-count
+    // convention as Flag::m_drawingNbFlags (1 for eighth, 2 for 16th, etc.) - data_DURATION values
+    // are consecutive from DURATION_4 (quarter) upward, one step per doubling of the beam/flag count.
+    const bool hasStem = (dur >= DURATION_2);
+    const int flagCount = (dur > DURATION_4) ? ((int)dur - (int)DURATION_4) : 0;
+
+    // Anchor: reuse the bounding box already computed for this Rend during the (unconditional)
+    // BBoxDeviceContext layout pass in Page::LayOutHorizontally/LayOutVertically, back when
+    // View::DrawRend still drew the single fallback glyph (see there) - this is the only place
+    // Verovio itself knows this Rend's absolute pen position within the surrounding inline tempo
+    // text. Fall back to the Tempo's own anchor if, for some reason, it was never computed.
+    const int x = rend->HasContentBB() ? rend->GetContentLeft() : params.m_x;
+    const int resumeX = rend->HasContentBB() ? rend->GetContentRight() : params.m_x;
+    // Metronome/individual-note SMuFL glyphs are designed so the notehead sits essentially on the
+    // text baseline (confirmed from the Leipzig and Bravura glyph metrics: e.g. Leipzig's
+    // metNoteQuarterUp notehead portion spans roughly [-126, 140] font units around the baseline),
+    // matching the "notehead center" convention DrawSmuflCode uses for a real note's GetDrawingY.
+    const int y = params.m_y;
+
+    this->DrawSmuflCode(dc, x, y, noteheadCode, staffSize, false);
+
+    if (hasStem) {
+        const Resources &resources = m_doc->GetResources();
+        const Glyph *notehead = resources.GetGlyph(noteheadCode);
+        assert(notehead);
+
+        // Stem attachment point, in the same SE-corner-of-notehead convention CalcStemFunctor/
+        // Note::GetStemUpSE use for a real up-stem note: prefer the glyph's own stemUpSE anchor and
+        // fall back to the same default (notehead width, quarter unit up) Note::GetStemUpSE uses.
+        Point attach(m_doc->GetGlyphWidth(noteheadCode, staffSize, false), m_doc->GetDrawingUnit(staffSize) / 4);
+        if (notehead->HasAnchor(SMUFL_stemUpSE)) {
+            const Point *anchor = notehead->GetAnchor(SMUFL_stemUpSE);
+            assert(anchor);
+            attach = m_doc->ConvertFontPoint(notehead, *anchor, staffSize, false);
+        }
+
+        const int stemWidth = m_doc->GetDrawingStemWidth(staffSize);
+        // Unshortened stem length: there is no staff position here to shorten a stem against (see
+        // Note::CalcStemLenInThirdUnits), so use the same base length CalcStemFunctor starts from for
+        // a real note - which is also the "full length" proportion the all-in-one metNote*Up glyphs
+        // themselves use.
+        const int stemLen = STANDARD_STEMLENGTH * m_doc->GetDrawingUnit(staffSize);
+
+        // Center the stem stroke so its outer (right) edge is flush with the notehead corner, exactly
+        // as CalcStemFunctor::VisitStem does (stemShift = half the stem width).
+        const int stemX = x + attach.x - stemWidth / 2;
+        const int stemBottomY = y + attach.y;
+        const int stemTopY = stemBottomY + stemLen;
+
+        this->DrawVerticalLine(dc, stemBottomY, stemTopY, stemX, stemWidth);
+
+        if (flagCount > 0) {
+            // One glyph encodes all flags for a given duration (e.g. flag16thUp already shows both
+            // flags), matching Flag::GetFlagGlyph.
+            static const char32_t flagGlyphs[9] = { 0, SMUFL_E240_flag8thUp, SMUFL_E242_flag16thUp,
+                SMUFL_E244_flag32ndUp, SMUFL_E246_flag64thUp, SMUFL_E248_flag128thUp, SMUFL_E24A_flag256thUp,
+                SMUFL_E24C_flag512thUp, SMUFL_E24E_flag1024thUp };
+            const char32_t flagCode = (flagCount <= 8) ? flagGlyphs[flagCount] : 0;
+            if (flagCode != 0) {
+                // Same x/y convention as View::DrawFlag: anchored at the stem tip, shifted left by
+                // half the stem width so the flag's left bearing aligns with the stem's left edge.
+                this->DrawSmuflCode(dc, stemX - stemWidth / 2, stemTopY, flagCode, staffSize, false);
+            }
+        }
+    }
+
+    // Resume the inline SVG text flow (a new <text> sibling) exactly where the fallback glyph's
+    // bounding box ended, so later siblings (augmentation dots, " = 88", etc.) land where the old
+    // single-character approach would have put them. The <text> opened once in View::DrawTempo was
+    // already closed by the caller's dc->EndTextGraphic(rend, this) plus this dc->EndText() call.
+    dc->EndText();
+    dc->StartText(this->ToDeviceContextX(resumeX), this->ToDeviceContextY(y), HORIZONTALALIGNMENT_left);
 }
 
 void View::DrawText(DeviceContext *dc, Text *text, TextDrawingParams &params)

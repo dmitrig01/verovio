@@ -83,7 +83,22 @@ public:
 private:
     //
 public:
-    //
+    /**
+     * When set to a duration other than DURATION_NONE, this Rend is a metronome beat-unit note
+     * symbol (e.g. the quarter note in "♩ = 88") built by MusicXmlInput::PrintMetronome, and
+     * View::DrawRend draws it compositionally - a standalone notehead glyph plus an independently
+     * drawn stem/flag, exactly like View::DrawStem/DrawFlag do for real notes - instead of drawing
+     * the single Text child (a fallback all-in-one metNote*Up/note*Up SMuFL character kept for
+     * round-tripping and for the BBoxDeviceContext layout pass, whose font metrics are reused to
+     * anchor the compositional drawing; see View::DrawMetronomeNoteSymbol). This exists because the
+     * baked-in notehead+stem proportions of those single glyphs look wrong in some fonts (e.g.
+     * Leipzig: stem too short and thick relative to the notehead). Carried over a getMEI()/MEI-load
+     * round trip via a non-standard vrv.mmnotedur attribute (see MEIOutput::WriteRend/
+     * MEIInput::ReadRend), mirroring the Dir::m_isSystemLabel/Dir::m_drawingYOffset precedent.
+     * Default is DURATION_NONE (draw the Text child normally).
+     */
+    data_DURATION m_metronomeNoteDur = DURATION_NONE;
+
 private:
 };
 

@@ -103,6 +103,7 @@ public:
         m_actualWidth = 0;
         m_enclose = TEXTRENDITION_NONE;
         m_textEnclose = ENCLOSURE_NONE;
+        m_staffSize = 100;
     }
     virtual ~TextDrawingParams() {}
 
@@ -112,6 +113,12 @@ public:
     int m_height;
     int m_actualWidth;
     bool m_laidOut;
+    // The staff size (percent, 100 = default) of the staff a floating text element (e.g. Tempo) is
+    // attached to. Set by View::DrawTempo. Used by View::DrawMetronomeNoteSymbol to reuse the exact
+    // same Doc::GetDrawingUnit/GetDrawingStemWidth/GetDrawingSmuflFont scale real notation notes use
+    // for that staff, so a metronome note-value symbol matches the size of an actual note on it.
+    // Unused (default 100) by any other caller.
+    int m_staffSize;
     // used when X and Y has been changed manually or otherwise (e.g. newline <lb/> shift or shift for
     // boxed enclosure for rend)
     bool m_explicitPosition;

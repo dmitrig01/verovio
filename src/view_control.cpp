@@ -2882,6 +2882,9 @@ void View::DrawTempo(DeviceContext *dc, Tempo *tempo, Measure *measure, System *
         params.m_x = x;
         params.m_y = y;
         params.m_pointSize = m_doc->GetDrawingLyricFont(staffSize)->GetPointSize();
+        // Needed by View::DrawMetronomeNoteSymbol to reuse this staff's real note proportions
+        // (Doc::GetDrawingUnit/GetDrawingStemWidth) for a metronome beat-unit note symbol.
+        params.m_staffSize = staffSize;
 
         tempoTxt.SetPointSize(params.m_pointSize);
 
