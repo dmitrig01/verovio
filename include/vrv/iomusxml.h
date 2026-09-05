@@ -622,8 +622,22 @@ private:
     std::vector<int> m_octDis;
     /* measure repeats */
     bool m_mRpt = false;
+    /* true iff the CURRENTLY ACTIVE m_mRpt was set by a manuscript-repeat
+       tag's type="single" (applies to exactly the one measure it's tagged
+       on) rather than type="start" (which legitimately stays sticky across
+       untagged measures until an explicit type="stop", per real corpus
+       data -- see ReadMusicXmlAttributes/ReadMusicXmlMeasure) */
+    bool m_mRptSingle = false;
     /* measure repeats */
     bool m_slash = false;
+    /* manuscript <measure-style><beat-repeat> currently active (distinct
+       from m_slash's own <measure-style><slash> lead-sheet-rhythm-slash
+       concept, which happens to map to the same BeatRpt MEI class via an
+       unrelated code path) */
+    bool m_beatRpt = false;
+    /* slash count (1-5) for the currently active m_beatRpt, from that
+       tag's own "slashes" attribute */
+    int m_beatRptSlash = 1;
     /* MIDI ticks */
     int m_ppq = -1;
     /* measure time */

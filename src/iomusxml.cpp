@@ -1908,6 +1908,25 @@ bool MusicXmlInput::ReadMusicXmlMeasure(
     // reset clef changed flag
     m_clefChanged = 0;
 
+    // A `type="single"` manuscript measure-repeat only applies to the ONE
+    // measure it's tagged on -- clear it before parsing this new measure's
+    // own content (a plain `type="start"` deliberately stays sticky across
+    // measures with no tag of their own until an explicit `type="stop"`,
+    // matching real corpus data where a multi-measure repeat span leaves
+    // interior measures untagged -- see m_mRptSingle's own docstring).
+    if (m_mRptSingle) {
+        m_mRpt = false;
+        m_mRptSingle = false;
+    }
+    // Unlike measure-repeat, a manuscript beat-repeat span never crosses a
+    // raw XML measure boundary in this corpus's own tagging convention --
+    // it always opens and closes within the SAME measure (real, written
+    // notes -> "start" -> one placeholder rest -> "stop", all inside one
+    // <measure>) -- so this resets unconditionally every measure rather
+    // than tracking a single-vs-start distinction the way m_mRptSingle
+    // does above.
+    m_beatRpt = false;
+
     const auto mrestPositonIter = m_multiRests.find(index);
     bool isMRestInOtherSystem = (mrestPositonIter != m_multiRests.end());
     int multiRestStaffNumber = 1;
@@ -2108,10 +2127,69 @@ void MusicXmlInput::ReadMusicXmlAttributes(
     pugi::xpath_node measureRepeat = node.select_node("measure-style/measure-repeat");
     pugi::xpath_node measureSlash = node.select_node("measure-style/slash");
     if (measureRepeat) {
-        m_mRpt = (HasAttributeWithValue(measureRepeat.node(), "type", "start")) ? true : false;
+        const std::string measureRepeatType = measureRepeat.node().attribute("type").as_string();
+        if (measureRepeatType == "start") {
+            // Multi-measure span: stays active (m_mRpt sticky) across any
+            // later measure with no tag of its own, until an explicit
+            // "stop" -- real corpus data leaves interior repeat measures
+            // untagged entirely (see ReadMusicXmlMeasure's own comment).
+            m_mRpt = true;
+            m_mRptSingle = false;
+        }
+        else if (measureRepeatType == "single") {
+            // Applies to this ONE measure only -- ReadMusicXmlMeasure
+            // clears m_mRpt again before parsing the NEXT measure's own
+            // content (see m_mRptSingle's own docstring in iomusxml.h).
+            m_mRpt = true;
+            m_mRptSingle = true;
+        }
+        else {
+            // "stop" (or any other/missing type) ends an active span.
+            m_mRpt = false;
+            m_mRptSingle = false;
+        }
     }
     if (measureSlash) {
         m_slash = (HasAttributeWithValue(measureSlash.node(), "type", "start")) ? true : false;
+    }
+
+    // Manuscript <measure-style><beat-repeat> -- confirmed absent from
+    // MusicXML importers entirely (unlike measure-repeat above), and a
+    // genuinely different real XML shape: appears MID-measure (often
+    // after one real written-out beat), spans a single placeholder rest
+    // note via ReadMusicXmlNote's own m_beatRpt early-return branch below,
+    // and closes via a SEPARATE, later <attributes> element in the same
+    // measure carrying type="stop" -- MusicXML validly allows more than
+    // one <attributes> block interspersed with <note> children within a
+    // single <measure>, and ReadMusicXmlMeasure already calls this
+    // function once per such block in document order, so no additional
+    // plumbing is needed to support that.
+    pugi::xpath_node beatRepeat = node.select_node("measure-style/beat-repeat");
+    if (beatRepeat) {
+        const std::string beatRepeatType = beatRepeat.node().attribute("type").as_string();
+        if (beatRepeatType == "start" || beatRepeatType == "single") {
+            m_beatRpt = true;
+            const int slashes = beatRepeat.node().attribute("slashes").as_int(1);
+            m_beatRptSlash = (slashes >= 1 && slashes <= 5) ? slashes : 1;
+        }
+        else {
+            // "stop" (or any other/missing type) ends the span. Unlike
+            // measure-repeat's "single", beat-repeat's "single" is
+            // self-contained the same way (one measure only, no matching
+            // "stop" expected) -- but since real corpus beat-repeat spans
+            // are only ever ONE placeholder note wide regardless of
+            // "start" vs "single" (confirmed directly against this
+            // corpus's own tagged data), there's no separate need for a
+            // sticky-across-measures case here the way plain
+            // measure-repeat "start" has: nothing else in this same
+            // measure's note loop would consume a second "single" as if
+            // it continued a span, so no per-"single" reset bookkeeping
+            // analogous to m_mRptSingle is needed -- ReadMusicXmlMeasure's
+            // per-measure reset (see its own comment) already clears
+            // m_beatRpt unconditionally before the next measure regardless
+            // of which type set it last.
+            m_beatRpt = false;
+        }
     }
 }
 
@@ -3013,6 +3091,24 @@ void MusicXmlInput::ReadMusicXmlNote(
         Chord *chord = vrv_cast<Chord *>(m_elementStackMap.at(layer).back());
         if (chord) duration = std::min(duration, chord->GetDurPpq());
     }
+
+    // for a manuscript beat-repeat span, add a single <beatRpt> (with its
+    // own slash count) in place of the real placeholder note and return --
+    // same one-element-per-span pattern as m_mRpt/MRpt above, not the
+    // unrelated per-beat-count loop used for <measure-style><slash> (see
+    // m_slash further below) -- needs `duration` (just computed above, the
+    // placeholder note's own written duration) for correct horizontal
+    // alignment, unlike MRpt which fills a whole known measure width.
+    if (m_beatRpt) {
+        BeatRpt *beatRpt = vrv_cast<BeatRpt *>(layer->GetFirst(BEATRPT));
+        if (!beatRpt) {
+            beatRpt = new BeatRpt();
+            beatRpt->SetSlash(static_cast<data_BEATRPT_REND>(m_beatRptSlash));
+            this->AddLayerElement(layer, beatRpt, duration);
+        }
+        return;
+    }
+
     const int noteStaffNum = node.child("staff").text().as_int();
     const pugi::xml_node rest = node.child("rest");
     if (m_ppq < 0 && duration && !typeStr.empty()) {
