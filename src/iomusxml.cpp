@@ -4513,9 +4513,18 @@ KeySig *MusicXmlInput::ConvertKey(const pugi::xml_node &key)
                 data_ACCIDENTAL_GESTURAL accidValue = ConvertAlterToAccid(keyStep.next_sibling().text().as_float());
                 keyAccid->SetAccid(Att::AccidentalGesturalToWritten(accidValue));
                 if (std::strncmp(keyStep.next_sibling().next_sibling().name(), "key-accidental", 14) == 0) {
-                    keyAccid->SetAccid(
-                        this->ConvertAccidentalToAccid(keyStep.next_sibling().next_sibling().text().as_string()));
-                    keyAccid->SetGlyphName(keyStep.next_sibling().next_sibling().attribute("smufl").as_string());
+                    pugi::xml_node keyAccidental = keyStep.next_sibling().next_sibling();
+                    keyAccid->SetAccid(this->ConvertAccidentalToAccid(keyAccidental.text().as_string()));
+                    keyAccid->SetGlyphName(keyAccidental.attribute("smufl").as_string());
+                    // Mirrors the existing note-level <accidental parentheses="yes">
+                    // handling elsewhere in this file (ReadMusicXmlNote) --
+                    // upstream never wired the same MusicXML attribute through
+                    // for a NON-TRADITIONAL key signature's own <key-accidental>
+                    // element, even though KeyAccid already inherits
+                    // AttEnclosingChars and can represent it.
+                    if (HasAttributeWithValue(keyAccidental, "parentheses", "yes")) {
+                        keyAccid->SetEnclose(ENCLOSURE_paren);
+                    }
                 }
                 else if (!keyAccid->HasAccid()) {
                     LogWarning("MusicXML import: Could not properly set keyAccid");
