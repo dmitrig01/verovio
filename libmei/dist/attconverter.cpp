@@ -535,6 +535,7 @@ std::string AttConverterBase::BarrenditionToStr(data_BARRENDITION data) const
         case BARRENDITION_rptend: value = "rptend"; break;
         case BARRENDITION_segno: value = "segno"; break;
         case BARRENDITION_single: value = "single"; break;
+        case BARRENDITION_heavylight: value = "heavylight"; break;
         default:
             LogWarning("Unknown value '%d' for data.BARRENDITION", data);
             value = "";
@@ -560,6 +561,7 @@ data_BARRENDITION AttConverterBase::StrToBarrendition(const std::string &value, 
     if (value == "rptend") return BARRENDITION_rptend;
     if (value == "segno") return BARRENDITION_segno;
     if (value == "single") return BARRENDITION_single;
+    if (value == "heavylight") return BARRENDITION_heavylight;
     if (logWarning && !value.empty())
         LogWarning("Unsupported value '%s' for data.BARRENDITION", value.c_str());
     return BARRENDITION_NONE;

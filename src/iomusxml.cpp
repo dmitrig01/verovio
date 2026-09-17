@@ -4728,6 +4728,7 @@ data_BARRENDITION MusicXmlInput::ConvertStyleToRend(const std::string &value, co
     if (value == "heavy") return BARRENDITION_heavy;
     if (value == "none") return BARRENDITION_invis;
     if ((value == "heavy-light") && repeat) return BARRENDITION_rptstart;
+    if ((value == "heavy-light") && !repeat) return BARRENDITION_heavylight;
     // if (value == "") return BARRENDITION_rptboth;
     if ((value == "light-heavy") && repeat) return BARRENDITION_rptend;
     if (value == "regular") return BARRENDITION_single;

@@ -323,6 +323,7 @@ int Measure::CalculateRightBarLineWidth(const Doc *doc, int staffSize) const
             break;
         }
         case BARRENDITION_rptend:
+        case BARRENDITION_heavylight:
         case BARRENDITION_end: {
             width = barLineSeparation + barLineWidth + barLineThickWidth;
             break;

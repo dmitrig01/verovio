@@ -270,6 +270,9 @@ enum data_BARRENDITION : int8_t {
     BARRENDITION_rptend,
     BARRENDITION_segno,
     BARRENDITION_single,
+    // Not in MEI: a plain thick-then-thin barline (MusicXML `heavy-light`
+    // without a repeat), e.g. at the start of a section.
+    BARRENDITION_heavylight,
     BARRENDITION_MAX
 };
 

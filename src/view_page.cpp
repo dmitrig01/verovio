@@ -855,7 +855,7 @@ void View::DrawBarLine(DeviceContext *dc, int yTop, int yBottom, BarLine *barLin
             else if (form == BARRENDITION_rptboth) {
                 maxX = x + barLinesSum + barLineSeparation * 2;
             }
-            else if (form == BARRENDITION_rptstart) {
+            else if ((form == BARRENDITION_rptstart) || (form == BARRENDITION_heavylight)) {
                 minX = x - barLineThickWidth / 2;
                 maxX = x2 + barLinesSum / 2;
             }
@@ -902,6 +902,10 @@ void View::DrawBarLine(DeviceContext *dc, int yTop, int yBottom, BarLine *barLin
             this->DrawVerticalSegmentedLine(dc, x2, line, barLineWidth);
             break;
         case BARRENDITION_rptstart:
+            this->DrawVerticalSegmentedLine(dc, x, line, barLineThickWidth);
+            this->DrawVerticalSegmentedLine(dc, x2 + barLinesSum / 2, line, barLineWidth);
+            break;
+        case BARRENDITION_heavylight: // rptstart without the dots
             this->DrawVerticalSegmentedLine(dc, x, line, barLineThickWidth);
             this->DrawVerticalSegmentedLine(dc, x2 + barLinesSum / 2, line, barLineWidth);
             break;
