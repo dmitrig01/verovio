@@ -1236,7 +1236,8 @@ FunctorCode PrepareLayerElementPartsFunctor::VisitRest(Rest *rest)
 {
     Dots *currentDots = vrv_cast<Dots *>(rest->FindDescendantByType(DOTS, 1));
 
-    const bool shouldHaveDots = (rest->GetDur() > DURATION_breve) && (rest->GetDots() > 0);
+    // A dotted breve rest is drawn with its dot too (CMN; e.g. a dotted-breve bar rest).
+    const bool shouldHaveDots = (rest->GetDur() >= DURATION_breve) && (rest->GetDots() > 0);
     currentDots = this->ProcessDots(currentDots, rest, shouldHaveDots);
 
     /************ Prepare the drawing cue size ************/

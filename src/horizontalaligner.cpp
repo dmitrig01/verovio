@@ -401,7 +401,8 @@ void GraceAligner::AlignStack()
         Alignment *alignment = this->GetAlignmentAtTime(time, ALIGNMENT_DEFAULT);
         element->SetGraceAlignment(alignment);
 
-        ClassIdsComparison matchType({ ACCID, FLAG, NOTE, STEM });
+        // DOTS too: a dotted grace note's dot needs its own room before the next grace note.
+        ClassIdsComparison matchType({ ACCID, DOTS, FLAG, NOTE, STEM });
         ListOfObjects children;
         element->FindAllDescendantsByComparison(&children, &matchType);
         alignment->AddLayerElementRef(element);

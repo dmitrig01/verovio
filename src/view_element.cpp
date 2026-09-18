@@ -863,7 +863,9 @@ void View::DrawDots(DeviceContext *dc, LayerElement *element, Layer *layer, Staf
 
     Dots *dots = vrv_cast<Dots *>(element);
     assert(dots);
-    const double offsetFactor = dots->GetDrawingCueSize() ? m_doc->GetOptions()->m_graceFactor.GetValue() : 1.0;
+    // A cue-size dot sits proportionally closer to its (small) notehead than the plain grace factor puts it, so it
+    // reads as that note's dot and not as something between it and the next note.
+    const double offsetFactor = dots->GetDrawingCueSize() ? m_doc->GetOptions()->m_graceFactor.GetValue() * 0.6 : 1.0;
 
     dc->StartGraphic(element, "", element->GetID());
 

@@ -129,7 +129,7 @@ FunctorCode CalcDotsFunctor::VisitRest(Rest *rest)
     }
 
     // Nothing to do
-    if ((rest->GetDur() <= DURATION_breve) || (rest->GetDots() < 1)) {
+    if ((rest->GetDur() < DURATION_breve) || (rest->GetDots() < 1)) {
         return FUNCTOR_SIBLINGS;
     }
 
@@ -164,8 +164,14 @@ FunctorCode CalcDotsFunctor::VisitRest(Rest *rest)
     // HARDCODED
     int xRel = m_doc->GetDrawingUnit(staffSize) * 2.5;
     if (drawingCueSize) xRel = m_doc->GetCueSize(xRel);
-    if (rest->GetDur() > DURATION_2) {
-        xRel = m_doc->GetGlyphWidth(rest->GetRestGlyph(), staff->m_drawingStaffSize, drawingCueSize);
+    const int glyphWidth = m_doc->GetGlyphWidth(rest->GetRestGlyph(), staff->m_drawingStaffSize, drawingCueSize);
+    // The breve rest is a narrow block (unlike the wide whole/half rests): its dot sits just past the glyph.
+    if ((rest->GetDur() > DURATION_2) || (rest->GetDur() == DURATION_breve)) {
+        xRel = glyphWidth;
+    }
+    // A whole/half rest wider than the hardcoded offset (e.g. Petaluma's) would hide its dot inside the glyph.
+    else {
+        xRel = std::max(xRel, glyphWidth + m_doc->GetDrawingUnit(staffSize) / 4);
     }
     dots->SetDrawingXRel(std::max(dots->GetDrawingXRel(), xRel));
 
