@@ -2685,7 +2685,11 @@ void MusicXmlInput::ReadMusicXmlDirection(
     // Ottava
     pugi::xml_node xmlShift = typeNode.child("octave-shift");
     if (xmlShift) {
-        const short int staffNum = (!staffNode) ? 1 : staffNode.text().as_int() + staffOffset;
+        // Without a <staff> child (a single-staff part never writes one) the shift belongs to this
+        // part's own first staff, not to the first staff of the score: `staffOffset` is what makes
+        // `m_octDis` (and so the octave a note is written at) follow the part the direction is in.
+        const short int staffNum
+            = (!staffNode) ? 1 + staffOffset : staffNode.text().as_int() + staffOffset;
         if (HasAttributeWithValue(xmlShift, "type", "stop")) {
             m_octDis[staffNum] = 0;
             for (auto iter = m_controlElements.begin(); iter != m_controlElements.end(); ++iter) {
