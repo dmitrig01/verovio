@@ -638,6 +638,18 @@ private:
     /* slash count (1-5) for the currently active m_beatRpt, from that
        tag's own "slashes" attribute */
     int m_beatRptSlash = 1;
+    /* true from a beat-repeat "start"/"single" until its first placeholder
+       note makes the span's <beatRpt>: each span gets its own element, so
+       one measure can hold several (e.g. 6/8 with two repeated beats) */
+    bool m_beatRptNew = false;
+    /* the active beat-repeat's use-dots="yes": draw the slash between two
+       dots (the manuscript "%"-like beat repeat) instead of bare slashes */
+    bool m_beatRptDots = false;
+    /* bars the active measure-repeat repeats (the tag's text, 1 or 2; any
+       other count draws as 1) and how many bars into its span this
+       measure is: a 2-bar repeat draws one <mRpt2> across a bar pair */
+    int m_mRptCount = 1;
+    int m_mRptBar = 0;
     /* MIDI ticks */
     int m_ppq = -1;
     /* measure time */

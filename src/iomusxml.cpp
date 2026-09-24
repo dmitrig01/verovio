@@ -56,6 +56,7 @@
 #include "mordent.h"
 #include "mrest.h"
 #include "mrpt.h"
+#include "mrpt2.h"
 #include "mspace.h"
 #include "multirest.h"
 #include "note.h"
@@ -1918,6 +1919,7 @@ bool MusicXmlInput::ReadMusicXmlMeasure(
         m_mRpt = false;
         m_mRptSingle = false;
     }
+    ++m_mRptBar;
     // Unlike measure-repeat, a manuscript beat-repeat span never crosses a
     // raw XML measure boundary in this corpus's own tagging convention --
     // it always opens and closes within the SAME measure (real, written
@@ -2135,6 +2137,8 @@ void MusicXmlInput::ReadMusicXmlAttributes(
             // untagged entirely (see ReadMusicXmlMeasure's own comment).
             m_mRpt = true;
             m_mRptSingle = false;
+            m_mRptCount = (measureRepeat.node().text().as_int(1) == 2) ? 2 : 1;
+            m_mRptBar = 0;
         }
         else if (measureRepeatType == "single") {
             // Applies to this ONE measure only -- ReadMusicXmlMeasure
@@ -2142,6 +2146,8 @@ void MusicXmlInput::ReadMusicXmlAttributes(
             // content (see m_mRptSingle's own docstring in iomusxml.h).
             m_mRpt = true;
             m_mRptSingle = true;
+            m_mRptCount = 1;
+            m_mRptBar = 0;
         }
         else {
             // "stop" (or any other/missing type) ends an active span.
@@ -2171,6 +2177,8 @@ void MusicXmlInput::ReadMusicXmlAttributes(
             m_beatRpt = true;
             const int slashes = beatRepeat.node().attribute("slashes").as_int(1);
             m_beatRptSlash = (slashes >= 1 && slashes <= 5) ? slashes : 1;
+            m_beatRptNew = true;
+            m_beatRptDots = HasAttributeWithValue(beatRepeat.node(), "use-dots", "yes");
         }
         else {
             // "stop" (or any other/missing type) ends the span. Unlike
@@ -3026,9 +3034,25 @@ void MusicXmlInput::ReadMusicXmlNote(
 
     // for measure repeats add a single <mRpt> and return
     if (m_mRpt) {
+        if (m_mRptCount == 2) {
+            // A 2-bar repeat: one <mRpt2> in the pair's first bar (drawn on
+            // the barline between the two, see View::DrawMRpt2), an <mSpace>
+            // holding the second bar's width.
+            if (m_mRptBar % 2 == 0) {
+                if (!layer->GetFirst(MRPT2)) this->AddLayerElement(layer, new MRpt2());
+            }
+            else if (!layer->GetFirst(MSPACE)) {
+                this->AddLayerElement(layer, new MSpace());
+            }
+            return;
+        }
         MRpt *mRpt = vrv_cast<MRpt *>(layer->GetFirst(MRPT));
         if (!mRpt) {
             mRpt = new MRpt();
+            // No running count ("2", "3", ...) over a run of repeated bars:
+            // a manuscript run carries none, and a 2-bar sign's own "2"
+            // must stay the only number a repeat sign shows.
+            mRpt->SetNumVisible(BOOLEAN_false);
             this->AddLayerElement(layer, mRpt);
         }
         return;
@@ -3104,11 +3128,14 @@ void MusicXmlInput::ReadMusicXmlNote(
     // placeholder note's own written duration) for correct horizontal
     // alignment, unlike MRpt which fills a whole known measure width.
     if (m_beatRpt) {
-        BeatRpt *beatRpt = vrv_cast<BeatRpt *>(layer->GetFirst(BEATRPT));
-        if (!beatRpt) {
-            beatRpt = new BeatRpt();
+        // One <beatRpt> per span (its first placeholder note); any further
+        // placeholder notes of the same span draw nothing.
+        if (m_beatRptNew) {
+            BeatRpt *beatRpt = new BeatRpt();
             beatRpt->SetSlash(static_cast<data_BEATRPT_REND>(m_beatRptSlash));
+            if (m_beatRptDots) beatRpt->SetType("use-dots");
             this->AddLayerElement(layer, beatRpt, duration);
+            m_beatRptNew = false;
         }
         return;
     }

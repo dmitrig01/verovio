@@ -497,9 +497,19 @@ void View::DrawBeatRpt(DeviceContext *dc, LayerElement *element, Layer *layer, S
     else {
         char32_t slash = SMUFL_E504_repeatBarSlash;
         const int slashNum = beatRpt->HasSlash() ? beatRpt->GetSlash() : 1;
-        const int halfWidth = m_doc->GetGlyphWidth(slash, staffSize, false) / 2;
+        const int slashWidth = m_doc->GetGlyphWidth(slash, staffSize, false);
+        const int halfWidth = slashWidth / 2;
         for (int i = 0; i < slashNum; ++i) {
             this->DrawSmuflCode(dc, xSymbol + i * halfWidth, ySymbol, slash, staffSize, false);
+        }
+        // use-dots (MusicXML <beat-repeat use-dots="yes">): the slashes sit
+        // between an upper dot on the left and a lower dot on the right, the
+        // corners a rising slash leaves empty -- the "%"-like beat repeat.
+        if (beatRpt->GetType() == "use-dots") {
+            const int dotWidth = m_doc->GetGlyphWidth(SMUFL_E503_repeatBarUpperDot, staffSize, false);
+            const int right = xSymbol + (slashNum - 1) * halfWidth + slashWidth;
+            this->DrawSmuflCode(dc, xSymbol + dotWidth / 4, ySymbol, SMUFL_E503_repeatBarUpperDot, staffSize, false);
+            this->DrawSmuflCode(dc, right - dotWidth - dotWidth / 4, ySymbol, SMUFL_E505_repeatBarLowerDot, staffSize, false);
         }
     }
 
@@ -1307,7 +1317,10 @@ void View::DrawMRpt2(DeviceContext *dc, LayerElement *element, Layer *layer, Sta
 
     dc->StartGraphic(element, "", element->GetID());
 
-    this->DrawMRptPart(dc, element->GetDrawingX(), staff->GetDrawingY(), SMUFL_E501_repeat2Bars, 2, true, staff);
+    // Centred on the barline between the two repeated bars (the <mRpt2> sits
+    // in the first of them), as engraved, not in the middle of one bar.
+    const int x = measure->GetDrawingX() + measure->GetRightBarLineXRel();
+    this->DrawMRptPart(dc, x, staff->GetDrawingY(), SMUFL_E501_repeat2Bars, 2, false, staff);
 
     dc->EndGraphic(element, this);
 }
